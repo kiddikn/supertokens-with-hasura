@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10s
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Set up Go

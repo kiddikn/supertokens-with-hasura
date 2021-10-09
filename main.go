@@ -152,7 +152,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 
 func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, r *http.Request) {
-		response.Header().Set("Access-Control-Allow-Origin", strings.Join([]string{webSiteDomain, hasuraEndPoint}, ","))
+		response.Header().Set("Access-Control-Allow-Origin", strings.Join([]string{webSiteDomain, hasuraEndPoint}, " "))
 		response.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == "OPTIONS" {
 			response.Header().Set("Access-Control-Allow-Headers",

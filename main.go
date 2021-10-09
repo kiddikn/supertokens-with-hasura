@@ -16,6 +16,7 @@ import (
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword/epmodels"
 	"github.com/supertokens/supertokens-golang/recipe/session"
+	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
 	"github.com/supertokens/supertokens-golang/supertokens"
 )
 
@@ -44,6 +45,7 @@ func main() {
 func run(cfg config) error {
 	d := domain.NewClient(cfg.HasuraAdminSecret, cfg.HasuraEndPoint)
 
+	samesite := "none"
 	if err := supertokens.Init(supertokens.TypeInput{
 		Supertokens: &supertokens.ConnectionInfo{
 			ConnectionURI: cfg.SuperTokensURL,
@@ -99,7 +101,9 @@ func run(cfg config) error {
 					},
 				},
 			),
-			session.Init(nil),
+			session.Init(&sessmodels.TypeInput{
+				CookieSameSite: &samesite,
+			}),
 		},
 	}); err != nil {
 		return err
@@ -137,8 +141,6 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/verify" {
 					fmt.Printf("request path: %s\n", r.URL.Path)
-					fmt.Println(r.Header.Get("Cookie"))
-
 					session.VerifySession(nil, sessioninfo).ServeHTTP(rw, r)
 					return
 				}

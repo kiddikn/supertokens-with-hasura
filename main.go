@@ -135,6 +135,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 		Addr: httpEndpoint,
 		Handler: corsMiddleware(
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				fmt.Println("middle ware start")
 				if r.URL.Path == "/verify" {
 					fmt.Printf("request path: %s\n", r.URL.Path)
 					session.VerifySession(nil, sessioninfo).ServeHTTP(rw, r)
@@ -177,6 +178,7 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 }
 
 func sessioninfo(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("start session")
 	fmt.Println(r.Context())
 	sessionContainer := session.GetSessionFromRequestContext(r.Context())
 	if sessionContainer == nil {

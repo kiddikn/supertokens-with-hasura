@@ -152,6 +152,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 
 func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) http.Handler {
 	allowHost := func(host string) string {
+		fmt.Println(host)
 		for _, a := range []string{webSiteDomain, hasuraEndPoint} {
 			if host == a {
 				return host
@@ -176,8 +177,10 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 }
 
 func sessioninfo(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.Context())
 	sessionContainer := session.GetSessionFromRequestContext(r.Context())
 	if sessionContainer == nil {
+		fmt.Println("no session container")
 		w.WriteHeader(500)
 		w.Write([]byte("no session found"))
 		return

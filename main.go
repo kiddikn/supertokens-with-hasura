@@ -152,8 +152,11 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 
 func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) http.Handler {
 	allowHost := func(host string) string {
+		origin := fmt.Sprintf("https://%s", host)
+		fmt.Println(origin)
 		for _, a := range []string{webSiteDomain, hasuraEndPoint} {
-			if fmt.Sprintf("https://%s", host) == a {
+			fmt.Println(a)
+			if origin == a {
 				return host
 			}
 		}

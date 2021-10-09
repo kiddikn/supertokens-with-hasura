@@ -137,7 +137,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/verify" {
 					fmt.Printf("request path: %s\n", r.URL.Path)
-					fmt.Println(r.Context())
+					fmt.Println(r.Cookie("sFrontToken"))
 					session.VerifySession(nil, sessioninfo).ServeHTTP(rw, r)
 					return
 				}

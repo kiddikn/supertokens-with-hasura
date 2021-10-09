@@ -164,7 +164,7 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 	}
 
 	return http.HandlerFunc(func(response http.ResponseWriter, r *http.Request) {
-		response.Header().Set("Access-Control-Allow-Origin", allowHost(r.Host))
+		response.Header().Set("Access-Control-Allow-Origin", allowHost(r.Header.Get("Origin")))
 		response.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == "OPTIONS" {
 			response.Header().Set("Access-Control-Allow-Headers",

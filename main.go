@@ -46,6 +46,7 @@ func run(cfg config) error {
 	d := domain.NewClient(cfg.HasuraAdminSecret, cfg.HasuraEndPoint)
 
 	samesite := "none"
+	cookieSecure := true
 	if err := supertokens.Init(supertokens.TypeInput{
 		Supertokens: &supertokens.ConnectionInfo{
 			ConnectionURI: cfg.SuperTokensURL,
@@ -103,6 +104,7 @@ func run(cfg config) error {
 			),
 			session.Init(&sessmodels.TypeInput{
 				CookieSameSite: &samesite,
+				CookieSecure:   &cookieSecure,
 			}),
 		},
 	}); err != nil {

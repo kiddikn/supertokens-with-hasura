@@ -105,7 +105,7 @@ func run(cfg config) error {
 		return err
 	}
 
-	s, err := httpServer(cfg.Port, cfg.WebSiteDomain)
+	s, err := httpServer(cfg.Port, cfg.WebSiteDomain, cfg.HasuraEndPoint)
 	if err != nil {
 		return err
 	}
@@ -129,18 +129,20 @@ func run(cfg config) error {
 	return nil
 }
 
-func httpServer(httpPort int, webSiteDomain string) (*http.Server, error) {
+func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Server, error) {
 	httpEndpoint := fmt.Sprintf(":%d", httpPort)
 	return &http.Server{
 		Addr: httpEndpoint,
 		Handler: corsMiddleware(
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/verify" {
+					fmt.Printf("request path: %s\n", r.URL.Path)
 					session.VerifySession(nil, sessioninfo).ServeHTTP(rw, r)
 					return
 				}
 			})),
 			webSiteDomain,
+			hasuraEndPoint,
 		),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -148,9 +150,9 @@ func httpServer(httpPort int, webSiteDomain string) (*http.Server, error) {
 	}, nil
 }
 
-func corsMiddleware(next http.Handler, webSiteDomain string) http.Handler {
+func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, r *http.Request) {
-		response.Header().Set("Access-Control-Allow-Origin", webSiteDomain)
+		response.Header().Set("Access-Control-Allow-Origin", strings.Join([]string{webSiteDomain, hasuraEndPoint}, ","))
 		response.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == "OPTIONS" {
 			response.Header().Set("Access-Control-Allow-Headers",

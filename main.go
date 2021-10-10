@@ -29,6 +29,7 @@ type config struct {
 	WebSiteDomain     string `env:"WEB_SITE_DOMAIN,required,notEmpty"`
 	HasuraEndPoint    string `env:"HASURA_END_POINT_URL,required,notEmpty"`
 	HasuraAdminSecret string `env:"HASURA_ADMIN_SECRET,required,notEmpty"`
+	CookieDomain      string `env:"COOKIE_DOMAIN,required,notEmpty"`
 }
 
 func main() {
@@ -47,6 +48,7 @@ func run(cfg config) error {
 
 	samesite := "none"
 	cookieSecure := true
+	cookieDomain := cfg.CookieDomain
 	if err := supertokens.Init(supertokens.TypeInput{
 		Supertokens: &supertokens.ConnectionInfo{
 			ConnectionURI: cfg.SuperTokensURL,
@@ -105,6 +107,7 @@ func run(cfg config) error {
 			session.Init(&sessmodels.TypeInput{
 				CookieSameSite: &samesite,
 				CookieSecure:   &cookieSecure,
+				CookieDomain:   &cookieDomain,
 			}),
 		},
 	}); err != nil {

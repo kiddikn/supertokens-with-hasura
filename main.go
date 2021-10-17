@@ -203,6 +203,7 @@ func sessioninfo(domain *domain.Hasura) http.HandlerFunc {
 		userID := sessionContainer.GetUserID()
 		ur, err := domain.GetUser(userID)
 		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
@@ -210,7 +211,7 @@ func sessioninfo(domain *domain.Hasura) http.HandlerFunc {
 		if ur == 2 {
 			role = "owner"
 		}
-		fmt.Println(role)
+		fmt.Println("role " + role)
 
 		bytes, err := json.Marshal(map[string]interface{}{
 			"X-Hasura-User-Id":  userID,

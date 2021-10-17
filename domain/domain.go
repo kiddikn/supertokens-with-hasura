@@ -56,28 +56,6 @@ func (h *Hasura) CreateUser(id, name, email string) error {
 }
 
 func (h *Hasura) GetUser(guid string) (int32, error) {
-	// query GetUser($guid: String) {
-	// 	user(where: {guid: {_eq: $guid}}) {
-	// 	  guid
-	// 	  role
-	// 	}
-	//   }
-
-	// {
-	// 	human(id: "1000") {
-	// 		name
-	// 		height(unit: METER)
-	// 	}
-	// }
-	// You can define this variable:
-
-	// var q struct {
-	// 	Human struct {
-	// 		Name   graphql.String
-	// 		Height graphql.Float `graphql:"height(unit: METER)"`
-	// 	} `graphql:"human(id: \"1000\")"`
-	// }
-
 	var q struct {
 		GetUser struct {
 			Role graphql.Int
@@ -92,4 +70,16 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	}
 
 	return int32(q.GetUser.Role), nil
+}
+
+const (
+	User  uint32 = 1
+	Owner uint32 = 2
+)
+
+func GetHasuraRole(r int32) string {
+	if r == int32(Owner) {
+		return "owner"
+	}
+	return "user"
 }

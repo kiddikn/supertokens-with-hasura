@@ -186,7 +186,7 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 	})
 }
 
-func sessioninfo(domain *domain.Hasura) http.HandlerFunc {
+func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("start session")
 		fmt.Println(r.Context())
@@ -202,21 +202,15 @@ func sessioninfo(domain *domain.Hasura) http.HandlerFunc {
 		w.Header().Add("content-type", "application/json")
 
 		userID := sessionContainer.GetUserID()
-		ur, err := domain.GetUser(userID)
+		ur, err := d.GetUser(userID)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		role := "user"
-		if ur == 2 {
-			role = "owner"
-		}
-		fmt.Println("role " + role)
-
 		bytes, err := json.Marshal(map[string]interface{}{
 			"X-Hasura-User-Id":  userID,
-			"X-Hasura-Role":     role,
+			"X-Hasura-Role":     domain.GetHasuraRole(ur),
 			"X-Hasura-Is-Owner": "false",
 		})
 

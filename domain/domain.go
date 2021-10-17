@@ -55,3 +55,20 @@ func (h *Hasura) CreateUser(id, name string) error {
 	}
 	return nil
 }
+
+// func (h *Hasura) GetUser(guid string) error {
+// 	var m struct {
+// 		InsertUsersOne struct {
+// 			Id graphql.String
+// 		} `graphql:"insert_users_one(object: {id: $id, name: $name, created_at: now})"`
+// 	}
+// 	variables := map[string]interface{}{
+// 		"id":   graphql.String(id),
+// 		"name": graphql.String(name),
+// 	}
+
+// 	if err := h.client.Query(context.Background(), &m, variables); err != nil {
+// 		return err
+// 	}
+// 	return m.
+// }

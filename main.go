@@ -198,8 +198,11 @@ func sessioninfo(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Add("content-type", "application/json")
+
+	userID := sessionContainer.GetUserID()
+	fmt.Println(userID)
 	bytes, err := json.Marshal(map[string]interface{}{
-		"X-Hasura-User-Id":  sessionContainer.GetUserID(),
+		"X-Hasura-User-Id":  userID,
 		"X-Hasura-Role":     "user",
 		"X-Hasura-Is-Owner": "false",
 	})

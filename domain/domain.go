@@ -82,7 +82,7 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	var q struct {
 		GetUser struct {
 			Role graphql.Int
-		} `graphql:"user(where: {guid: {_eq: $guid}})"`
+		} `graphql:"GetUser($guid: String)"`
 	}
 	variables := map[string]interface{}{
 		"guid": graphql.String(guid),

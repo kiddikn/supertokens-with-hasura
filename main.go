@@ -114,7 +114,7 @@ func run(cfg config) error {
 		return err
 	}
 
-	s, err := httpServer(cfg.Port, cfg.WebSiteDomain, cfg.HasuraEndPoint)
+	s, err := httpServer(cfg.Port, cfg.WebSiteDomain, cfg.HasuraEndPoint, d)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func run(cfg config) error {
 	return nil
 }
 
-func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Server, error) {
+func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string, domain *domain.Hasura) (*http.Server, error) {
 	httpEndpoint := fmt.Sprintf(":%d", httpPort)
 	return &http.Server{
 		Addr: httpEndpoint,
@@ -146,7 +146,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string) (*http.Serve
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/verify" {
 					fmt.Printf("request path: %s\n", r.URL.Path)
-					session.VerifySession(nil, sessioninfo).ServeHTTP(rw, r)
+					session.VerifySession(nil, sessioninfo(domain)).ServeHTTP(rw, r)
 					return
 				}
 			})),
@@ -185,32 +185,44 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 	})
 }
 
-func sessioninfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("start session")
-	fmt.Println(r.Context())
-	sessionContainer := session.GetSessionFromRequestContext(r.Context())
-	if sessionContainer == nil {
-		fmt.Println("no session container")
-		w.WriteHeader(500)
-		w.Write([]byte("no session found"))
-		return
-	}
+func sessioninfo(domain *domain.Hasura) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("start session")
+		fmt.Println(r.Context())
+		sessionContainer := session.GetSessionFromRequestContext(r.Context())
+		if sessionContainer == nil {
+			fmt.Println("no session container")
+			w.WriteHeader(500)
+			w.Write([]byte("no session found"))
+			return
+		}
 
-	w.WriteHeader(200)
-	w.Header().Add("content-type", "application/json")
+		w.WriteHeader(200)
+		w.Header().Add("content-type", "application/json")
 
-	userID := sessionContainer.GetUserID()
-	fmt.Println(userID)
-	bytes, err := json.Marshal(map[string]interface{}{
-		"X-Hasura-User-Id":  userID,
-		"X-Hasura-Role":     "user",
-		"X-Hasura-Is-Owner": "false",
-	})
+		userID := sessionContainer.GetUserID()
+		ur, err := domain.GetUser(userID)
+		if err != nil {
+			return
+		}
 
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("error in converting to json"))
-	} else {
-		w.Write(bytes)
+		role := "user"
+		if ur == 2 {
+			role = "owner"
+		}
+		fmt.Println(role)
+
+		bytes, err := json.Marshal(map[string]interface{}{
+			"X-Hasura-User-Id":  userID,
+			"X-Hasura-Role":     role,
+			"X-Hasura-Is-Owner": "false",
+		})
+
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("error in converting to json"))
+		} else {
+			w.Write(bytes)
+		}
 	}
 }

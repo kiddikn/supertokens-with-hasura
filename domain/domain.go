@@ -56,19 +56,41 @@ func (h *Hasura) CreateUser(id, name string) error {
 	return nil
 }
 
-// func (h *Hasura) GetUser(guid string) error {
-// 	var m struct {
-// 		InsertUsersOne struct {
-// 			Id graphql.String
-// 		} `graphql:"insert_users_one(object: {id: $id, name: $name, created_at: now})"`
-// 	}
-// 	variables := map[string]interface{}{
-// 		"id":   graphql.String(id),
-// 		"name": graphql.String(name),
-// 	}
+func (h *Hasura) GetUser(guid string) (int32, error) {
+	// query GetUser($guid: String) {
+	// 	user(where: {guid: {_eq: $guid}}) {
+	// 	  guid
+	// 	  role
+	// 	}
+	//   }
 
-// 	if err := h.client.Query(context.Background(), &m, variables); err != nil {
-// 		return err
-// 	}
-// 	return m.
-// }
+	// {
+	// 	human(id: "1000") {
+	// 		name
+	// 		height(unit: METER)
+	// 	}
+	// }
+	// You can define this variable:
+
+	// var q struct {
+	// 	Human struct {
+	// 		Name   graphql.String
+	// 		Height graphql.Float `graphql:"height(unit: METER)"`
+	// 	} `graphql:"human(id: \"1000\")"`
+	// }
+
+	var q struct {
+		GetUser struct {
+			Role graphql.Int
+		} `graphql:"user(where: {guid: {_eq: $guid}})"`
+	}
+	variables := map[string]interface{}{
+		"guid": graphql.String(guid),
+	}
+
+	if err := h.client.Query(context.Background(), &q, variables); err != nil {
+		return 0, err
+	}
+
+	return int32(q.GetUser.Role), nil
+}

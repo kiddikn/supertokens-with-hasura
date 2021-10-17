@@ -80,9 +80,9 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	// }
 
 	var q struct {
-		UserByPK struct {
+		GetUser struct {
 			Role graphql.Int
-		} `graphql:"user_by_pk($guid: String!)"`
+		} `graphql:"get_user($guid: String!)"`
 	}
 	variables := map[string]interface{}{
 		"guid": graphql.String(guid),
@@ -92,5 +92,5 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 		return 0, err
 	}
 
-	return int32(q.UserByPK.Role), nil
+	return int32(q.GetUser.Role), nil
 }

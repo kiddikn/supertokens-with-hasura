@@ -83,6 +83,7 @@ func run(cfg config) error {
 								if resp.OK != nil {
 									// sign up was successful
 									id := resp.OK.User.ID
+									email := resp.OK.User.Email
 									var name string
 									for _, ff := range formFields {
 										if ff.ID == "name" {
@@ -91,7 +92,7 @@ func run(cfg config) error {
 										}
 									}
 
-									if err := d.CreateUser(id, name); err != nil {
+									if err := d.CreateUser(id, name, email); err != nil {
 										return epmodels.SignUpResponse{}, err
 									}
 								}

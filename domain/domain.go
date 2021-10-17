@@ -39,15 +39,14 @@ func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
 	}
 }
 
-func (h *Hasura) CreateUser(id, name string) error {
+func (h *Hasura) CreateUser(id, name, email string) error {
 	var m struct {
-		InsertUsersOne struct {
-			Id graphql.String
-		} `graphql:"insert_users_one(object: {id: $id, name: $name, created_at: now})"`
+		InsertUsersOne struct{} `graphql:"insert_users_one(object: {guid: $guid, name: $name, email: $email})"`
 	}
 	variables := map[string]interface{}{
-		"id":   graphql.String(id),
-		"name": graphql.String(name),
+		"guid":  graphql.String(id),
+		"name":  graphql.String(name),
+		"email": graphql.String(email),
 	}
 
 	if err := h.client.Mutate(context.Background(), &m, variables); err != nil {
@@ -82,7 +81,7 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	var q struct {
 		GetUser struct {
 			Role graphql.Int
-		} `graphql:"get_user($guid: String!)"`
+		} `graphql:"user_by_pk(object: {guid: $guid})"`
 	}
 	variables := map[string]interface{}{
 		"guid": graphql.String(guid),

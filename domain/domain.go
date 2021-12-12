@@ -75,11 +75,14 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 const (
 	User  uint32 = 1
 	Owner uint32 = 2
+	Super uint32 = 3
 )
 
 func GetHasuraRole(r int32) string {
 	if r == int32(Owner) {
 		return "owner"
+	} else if r == int32(Super) {
+		return "super"
 	}
 	return "user"
 }

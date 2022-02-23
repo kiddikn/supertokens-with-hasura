@@ -72,12 +72,12 @@ func run(cfg config) error {
 					Override: &epmodels.OverrideStruct{
 						APIs: func(originalImplementation epmodels.APIInterface) epmodels.APIInterface {
 							// First we copy the original implementation
-							newImplementation := originalImplementation
+							originalSignUpPOST := *originalImplementation.SignUpPOST
 
-							newImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions) (epmodels.SignUpResponse, error) {
-								resp, err := originalImplementation.SignUpPOST(formFields, options)
+							*originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
+								resp, err := originalSignUpPOST(formFields, options, userContext)
 								if err != nil {
-									return epmodels.SignUpResponse{}, err
+									return epmodels.SignUpPOSTResponse{}, err
 								}
 
 								if resp.OK != nil {
@@ -93,14 +93,14 @@ func run(cfg config) error {
 									}
 
 									if err := d.CreateUser(id, name, email); err != nil {
-										return epmodels.SignUpResponse{}, err
+										return epmodels.SignUpPOSTResponse{}, err
 									}
 								}
 
 								return resp, err
 							}
 
-							return newImplementation
+							return originalImplementation
 						},
 					},
 				},

@@ -3,19 +3,14 @@ package domain
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/hasura/go-graphql-client"
 )
 
-type CustomTransport struct {
-	adminSecret string
-	base        http.RoundTripper
-}
-
-func (ct *CustomTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("x-hasura-admin-secret", ct.adminSecret)
-	return ct.base.RoundTrip(req)
+func setAuthHeader(secret string) func(req *http.Request) {
+	return func(req *http.Request) {
+		req.Header.Add("x-hasura-admin-secret", secret)
+	}
 }
 
 type Hasura struct {
@@ -23,19 +18,9 @@ type Hasura struct {
 }
 
 func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
-	tr := &CustomTransport{
-		adminSecret: hasuraAdminSecret,
-		base: &http.Transport{
-			MaxIdleConns:          10,
-			IdleConnTimeout:       30 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-	c := &http.Client{Transport: tr}
-	client := graphql.NewClient(hasuraEndPoint, c)
 	return &Hasura{
-		client: client,
+		client: graphql.NewClient(hasuraEndPoint, nil).
+			WithRequestModifier(setAuthHeader(hasuraAdminSecret)),
 	}
 }
 

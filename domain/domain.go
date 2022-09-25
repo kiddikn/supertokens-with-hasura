@@ -26,7 +26,7 @@ func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
 
 func (h *Hasura) CreateUser(id, name, email string) error {
 	var m struct {
-		InsertUsersOne struct{} `graphql:"insert_users_one(object: {guid: $guid, name: $name, email: $email})"`
+		InsertUserOne struct{ Name graphql.String } `graphql:"insert_user_one(object: {guid: $guid, name: $name, email: $email})"`
 	}
 	variables := map[string]interface{}{
 		"guid":  graphql.String(id),

@@ -238,8 +238,33 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 }
 
 func createUserAPI(w http.ResponseWriter, r *http.Request) {
-	email := "" // TODO: read email from request body
-	fmt.Printf("email:%s\n", email)
+	sessionContainer := session.GetSessionFromRequestContext(r.Context())
+	if sessionContainer == nil {
+		fmt.Println("no session container")
+		w.WriteHeader(500)
+		w.Write([]byte("no session found"))
+		return
+	}
+
+	type Param struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+
+	var param Param
+	if err := json.NewDecoder(r.Body).Decode(&param); err != nil {
+		log.Fatal(err)
+		w.WriteHeader(400)
+		w.Write([]byte("request decode failed"))
+	}
+
+	if param.Email == "" || param.Name == "" {
+		w.WriteHeader(400)
+		w.Write([]byte("request param is invalid"))
+	}
+
+	reqUserID := sessionContainer.GetUserID()
+	fmt.Println(reqUserID)
 	// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
 	// // if err != nil {
 	// // 	// TODO: send 500 to the client

@@ -247,8 +247,9 @@ func createUserAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Param struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		GroupGUID string `json:"groupGuid"`
 	}
 
 	var param Param
@@ -258,13 +259,17 @@ func createUserAPI(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("request decode failed"))
 	}
 
-	if param.Email == "" || param.Name == "" {
+	if param.Email == "" || param.Name == "" || param.GroupGUID == "" {
 		w.WriteHeader(400)
 		w.Write([]byte("request param is invalid"))
 	}
 
 	reqUserID := sessionContainer.GetUserID()
 	fmt.Println(reqUserID)
+
+	// TODO: requestされたユーザーが対象グループのオーナーかチェックする
+
+	// TODO" ユーザーを作成する
 	// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
 	// // if err != nil {
 	// // 	// TODO: send 500 to the client
@@ -276,6 +281,7 @@ func createUserAPI(w http.ResponseWriter, r *http.Request) {
 	// // 	return
 	// // }
 
+	// TODO: リセットパスワードのトークンを作成
 	// // // we successfully created the user. Now we should send them their invite link
 	// // passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
 	// // if err != nil {
@@ -283,6 +289,12 @@ func createUserAPI(w http.ResponseWriter, r *http.Request) {
 	// // 	return
 	// // }
 
+	// TODO: hasura上にユーザー作成
+	// 		if err := d.CreateUser(id, name, email); err != nil {
+	// 			return epmodels.SignUpPOSTResponse{}, err
+	// 		}
+
+	// TODO: メール送信
 	// // inviteLink := "http://localhost:3000/auth/reset-password?token=" + passwordResetToken.OK.Token
 	// // err = emailpassword.SendEmail(emaildelivery.EmailType{
 	// // 	PasswordReset: &emaildelivery.PasswordResetType{

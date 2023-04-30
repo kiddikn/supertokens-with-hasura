@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/kiddikn/supertokens-with-hasura/domain"
+	"github.com/supertokens/supertokens-golang/recipe/dashboard"
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword/epmodels"
 	"github.com/supertokens/supertokens-golang/recipe/session"
@@ -30,20 +32,23 @@ type config struct {
 	HasuraEndPoint    string `env:"HASURA_END_POINT_URL,required,notEmpty"`
 	HasuraAdminSecret string `env:"HASURA_ADMIN_SECRET,required,notEmpty"`
 	CookieDomain      string `env:"COOKIE_DOMAIN,required,notEmpty"`
+	FakePassword      string `env:"FAKE_PASSWORD,required,notEmpty"`
 }
 
+var cfg config
+
 func main() {
-	cfg := config{}
+	cfg = config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := run(cfg); err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(cfg config) error {
+func run() error {
 	d := domain.NewClient(cfg.HasuraAdminSecret, cfg.HasuraEndPoint)
 
 	samesite := "none"
@@ -71,33 +76,37 @@ func run(cfg config) error {
 					},
 					Override: &epmodels.OverrideStruct{
 						APIs: func(originalImplementation epmodels.APIInterface) epmodels.APIInterface {
-							// First we copy the original implementation
-							originalSignUpPOST := *originalImplementation.SignUpPOST
+							originalImplementation.SignUpPOST = nil
+							return originalImplementation
+						},
+						Functions: func(originalImplementation epmodels.RecipeInterface) epmodels.RecipeInterface {
+							ogResetPasswordUsingToken := *originalImplementation.ResetPasswordUsingToken
+							ogSignIn := *originalImplementation.SignIn
+							ogUpdateEmailOrPassword := *originalImplementation.UpdateEmailOrPassword
 
-							*originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
-								resp, err := originalSignUpPOST(formFields, options, userContext)
-								if err != nil {
-									return epmodels.SignUpPOSTResponse{}, err
+							(*originalImplementation.UpdateEmailOrPassword) = func(userId string, email, password *string, userContext supertokens.UserContext) (epmodels.UpdateEmailOrPasswordResponse, error) {
+								if password != nil && *password == cfg.FakePassword {
+									return epmodels.UpdateEmailOrPasswordResponse{}, errors.New("use a different password")
 								}
+								return ogUpdateEmailOrPassword(userId, email, password, userContext)
+							}
 
-								if resp.OK != nil {
-									// sign up was successful
-									id := resp.OK.User.ID
-									email := resp.OK.User.Email
-									var name string
-									for _, ff := range formFields {
-										if ff.ID == "name" {
-											name = ff.Value
-											break
-										}
-									}
-
-									if err := d.CreateUser(id, name, email); err != nil {
-										return epmodels.SignUpPOSTResponse{}, err
-									}
+							(*originalImplementation.ResetPasswordUsingToken) = func(token, newPassword string, userContext supertokens.UserContext) (epmodels.ResetPasswordUsingTokenResponse, error) {
+								if newPassword == cfg.FakePassword {
+									return epmodels.ResetPasswordUsingTokenResponse{
+										ResetPasswordInvalidTokenError: &struct{}{},
+									}, nil
 								}
+								return ogResetPasswordUsingToken(token, newPassword, userContext)
+							}
 
-								return resp, err
+							(*originalImplementation.SignIn) = func(email, password string, userContext supertokens.UserContext) (epmodels.SignInResponse, error) {
+								if password == cfg.FakePassword {
+									return epmodels.SignInResponse{
+										WrongCredentialsError: &struct{}{},
+									}, nil
+								}
+								return ogSignIn(email, password, userContext)
 							}
 
 							return originalImplementation
@@ -105,6 +114,7 @@ func run(cfg config) error {
 					},
 				},
 			),
+			dashboard.Init(nil),
 			session.Init(&sessmodels.TypeInput{
 				CookieSameSite: &samesite,
 				CookieSecure:   &cookieSecure,
@@ -147,6 +157,14 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string, domain *doma
 			supertokens.Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/verify" {
 					session.VerifySession(nil, sessioninfo(domain)).ServeHTTP(rw, r)
+					return
+				}
+
+				if r.URL.Path == "/create" {
+					sessionRequired := true
+					session.VerifySession(&sessmodels.VerifySessionOptions{
+						SessionRequired: &sessionRequired, // NOTE:指定したグループに対してowner権限を持っているか見ないといけないのでログイン済みかどうかだけここでチェック
+					}, createUserAPI).ServeHTTP(rw, r)
 					return
 				}
 			})),
@@ -217,4 +235,72 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 			w.Write(bytes)
 		}
 	}
+}
+
+func createUserAPI(w http.ResponseWriter, r *http.Request) {
+	email := "" // TODO: read email from request body
+	fmt.Printf("email:%s\n", email)
+	// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
+	// // if err != nil {
+	// // 	// TODO: send 500 to the client
+	// // 	return
+	// // }
+
+	// // if signUpResult.EmailAlreadyExistsError != nil {
+	// // 	// TODO: send 400 to the client
+	// // 	return
+	// // }
+
+	// // // we successfully created the user. Now we should send them their invite link
+	// // passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
+	// // if err != nil {
+	// // 	// TODO: send 500 to the client
+	// // 	return
+	// // }
+
+	// // inviteLink := "http://localhost:3000/auth/reset-password?token=" + passwordResetToken.OK.Token
+	// // err = emailpassword.SendEmail(emaildelivery.EmailType{
+	// // 	PasswordReset: &emaildelivery.PasswordResetType{
+	// // 		User: emaildelivery.User{
+	// // 			ID:    signUpResult.OK.User.ID,
+	// // 			Email: signUpResult.OK.User.Email,
+	// // 		},
+	// // 		PasswordResetLink: inviteLink,
+	// // 	},
+	// // })
+	// // if err != nil {
+	// // 	// TODO: send 500 to the client
+	// // 	return
+	// // }
+	// // // TODO: send 200 to the client
+
+	// ↓元々signUpで呼ばれていた
+	// // First we copy the original implementation
+	// originalSignUpPOST := *originalImplementation.SignUpPOST
+
+	// *originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
+	// 	resp, err := originalSignUpPOST(formFields, options, userContext)
+	// 	if err != nil {
+	// 		return epmodels.SignUpPOSTResponse{}, err
+	// 	}
+
+	// 	if resp.OK != nil {
+	// 		// sign up was successful
+	// 		id := resp.OK.User.ID
+	// 		email := resp.OK.User.Email
+	// 		var name string
+	// 		for _, ff := range formFields {
+	// 			if ff.ID == "name" {
+	// 				name = ff.Value
+	// 				break
+	// 			}
+	// 		}
+
+	// 		if err := d.CreateUser(id, name, email); err != nil {
+	// 			return epmodels.SignUpPOSTResponse{}, err
+	// 		}
+	// 	}
+
+	// 	return resp, err
+	// }
 }

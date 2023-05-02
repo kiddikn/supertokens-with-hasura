@@ -293,7 +293,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		var stGuid string
 		if signUpResult.EmailAlreadyExistsError != nil {
 			if _, err = d.GetUserByEmail(param.Email); err != nil {
-				if !errors.Is(err, domain.NotFound) {
+				if !errors.Is(err, domain.ErrNotFound) {
 					w.WriteHeader(500)
 					w.Write([]byte("failed to get hasura user"))
 					return

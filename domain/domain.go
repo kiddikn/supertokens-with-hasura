@@ -8,7 +8,7 @@ import (
 	"github.com/hasura/go-graphql-client"
 )
 
-var NotFound = fmt.Errorf("not found")
+var ErrNotFound = fmt.Errorf("not found")
 
 func setAuthHeader(secret string) func(req *http.Request) {
 	return func(req *http.Request) {
@@ -29,7 +29,9 @@ func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
 
 func (h *Hasura) CreateUser(id, name, email string) error {
 	var m struct {
-		InsertUserOne struct{ Name graphql.String } `graphql:"insert_user_one(object: {guid: $guid, name: $name, email: $email})"`
+		InsertUserOne struct {
+			Name graphql.String
+		} `graphql:"insert_user_one(object: {guid: $guid, name: $name, email: $email})"`
 	}
 	variables := map[string]interface{}{
 		"guid":  graphql.String(id),
@@ -75,7 +77,7 @@ func (h *Hasura) GetUserByEmail(email string) (string, error) {
 	}
 
 	if len(q.User) == 0 {
-		return "", NotFound
+		return "", ErrNotFound
 
 	}
 	if len(q.User) > 1 {

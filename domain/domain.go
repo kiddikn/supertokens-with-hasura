@@ -8,6 +8,8 @@ import (
 	"github.com/hasura/go-graphql-client"
 )
 
+var NotFound = fmt.Errorf("not found")
+
 func setAuthHeader(secret string) func(req *http.Request) {
 	return func(req *http.Request) {
 		req.Header.Add("x-hasura-admin-secret", secret)
@@ -56,6 +58,31 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	}
 
 	return int32(q.GetUser.Role), nil
+}
+
+func (h *Hasura) GetUserByEmail(email string) (string, error) {
+	var q struct {
+		User []struct {
+			Guid graphql.String
+		} `graphql:"user(where: {email: {_eq: $email}})"`
+	}
+	variables := map[string]interface{}{
+		"email": graphql.String(email),
+	}
+
+	if err := h.client.Query(context.Background(), &q, variables); err != nil {
+		return "", err
+	}
+
+	if len(q.User) == 0 {
+		return "", NotFound
+
+	}
+	if len(q.User) > 1 {
+		return "", fmt.Errorf("failed to get user")
+
+	}
+	return string(q.User[0].Guid), nil
 }
 
 func (h *Hasura) GetUserGroupRole(userGUID, groupGUID string) (int32, error) {

@@ -282,76 +282,73 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 			}
 		}
 
-		// TODO" ユーザーを作成する
-		// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
-		// // if err != nil {
-		// // 	// TODO: send 500 to the client
-		// // 	return
-		// // }
+		// ユーザーを作成
+		signUpResult, err := emailpassword.SignUp(param.Email, cfg.FakePassword)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("failed to sign up. Please retry the inviting flow"))
+			return
+		}
 
-		// // if signUpResult.EmailAlreadyExistsError != nil {
-		// // 	// TODO: send 400 to the client
-		// // 	return
-		// // }
+		var stGuid string
+		if signUpResult.EmailAlreadyExistsError != nil {
+			if _, err = d.GetUserByEmail(param.Email); err != nil {
+				if !errors.Is(err, domain.NotFound) {
+					w.WriteHeader(500)
+					w.Write([]byte("failed to get hasura user"))
+					return
+				}
+			} else {
+				// STにもhasuraにもあるので自分でリセットさせる
+				w.WriteHeader(409)
+				w.Write([]byte("user already exists, just try reset password from login page"))
+				return
+			}
 
-		// TODO: リセットパスワードのトークンを作成
-		// // // we successfully created the user. Now we should send them their invite link
-		// // passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
-		// // if err != nil {
-		// // 	// TODO: send 500 to the client
-		// // 	return
-		// // }
+			// STにはあるけど、hasura上にはないのでSTからguid取得する
+			res, err := emailpassword.GetUserByEmail(param.Email)
+			if err != nil {
+				w.WriteHeader(500)
+				w.Write([]byte("failed to get user by email"))
+			}
+			stGuid = res.ID
+		} else {
+			stGuid = signUpResult.OK.User.ID
+		}
+		fmt.Println(stGuid)
 
 		// TODO: hasura上にユーザー作成
-		// 		if err := d.CreateUser(id, name, email); err != nil {
-		// 			return epmodels.SignUpPOSTResponse{}, err
-		// 		}
-
-		// TODO: メール送信
-		// // inviteLink := "http://localhost:3000/auth/reset-password?token=" + passwordResetToken.OK.Token
-		// // err = emailpassword.SendEmail(emaildelivery.EmailType{
-		// // 	PasswordReset: &emaildelivery.PasswordResetType{
-		// // 		User: emaildelivery.User{
-		// // 			ID:    signUpResult.OK.User.ID,
-		// // 			Email: signUpResult.OK.User.Email,
-		// // 		},
-		// // 		PasswordResetLink: inviteLink,
-		// // 	},
-		// // })
-		// // if err != nil {
-		// // 	// TODO: send 500 to the client
-		// // 	return
-		// // }
-		// // // TODO: send 200 to the client
-
-		// ↓元々signUpで呼ばれていた
-		// // First we copy the original implementation
-		// originalSignUpPOST := *originalImplementation.SignUpPOST
-
-		// *originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
-		// 	resp, err := originalSignUpPOST(formFields, options, userContext)
-		// 	if err != nil {
-		// 		return epmodels.SignUpPOSTResponse{}, err
-		// 	}
-
-		// 	if resp.OK != nil {
-		// 		// sign up was successful
-		// 		id := resp.OK.User.ID
-		// 		email := resp.OK.User.Email
-		// 		var name string
-		// 		for _, ff := range formFields {
-		// 			if ff.ID == "name" {
-		// 				name = ff.Value
-		// 				break
-		// 			}
-		// 		}
-
-		// 		if err := d.CreateUser(id, name, email); err != nil {
-		// 			return epmodels.SignUpPOSTResponse{}, err
-		// 		}
-		// 	}
-
-		// 	return resp, err
+		// if err := d.CreateUser(id, name, email); err != nil {
+		// 	w.WriteHeader(500)
+		// 	w.Write([]byte("failed to create user on hasura, please contact system owner..."))
+		// 	return
 		// }
+
+		// パスワードリセット&メール送信
+		{
+			// passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
+			// if err != nil {
+			// 	w.WriteHeader(500)
+			// 	w.Write([]byte("failed to reset password token, just try reset password from login page"))
+			// 	return
+			// }
+
+			// inviteLink := fmt.Sprintf("%s/auth/reset-password?token=%s", "", passwordResetToken.OK.Token)
+			// if err := emailpassword.SendEmail(emaildelivery.EmailType{
+			// 	PasswordReset: &emaildelivery.PasswordResetType{
+			// 		User: emaildelivery.User{
+			// 			ID:    signUpResult.OK.User.ID,
+			// 			Email: signUpResult.OK.User.Email,
+			// 		},
+			// 		PasswordResetLink: inviteLink,
+			// 	},
+			// }); err != nil {
+			// 	w.WriteHeader(500)
+			// 	w.Write([]byte("failed to send reset email, just try reset password from login page"))
+			// 	return
+			// }
+		}
+
+		w.WriteHeader(200)
 	}
 }

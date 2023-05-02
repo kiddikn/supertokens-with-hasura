@@ -6,6 +6,7 @@ go 1.19
 require (
 	github.com/caarlos0/env/v6 v6.7.1
 	github.com/hasura/go-graphql-client v0.9.3
+	github.com/oklog/ulid/v2 v2.1.0
 	github.com/supertokens/supertokens-golang v0.10.8
 )
 

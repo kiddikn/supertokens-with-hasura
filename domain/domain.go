@@ -35,8 +35,8 @@ func (h *Hasura) CreateUser(stid, name, email, ugGuid string, groupID int) error
 	// }
 	var m struct {
 		InsertUserOne struct {
-			Role graphql.String
-		} `graphql:"insert_user_one(object: {guid: $stguid, name: $name, email: $email, user_groups: {data: {group_id: $groupID, guid: $ugGuid, user_guid: $stguid}}})"`
+			Guid graphql.String
+		} `graphql:"insert_user_one(object: {guid: $stguid, name: $name, email: $email, user_groups: {data: {group_id: $groupID, guid: $ugGuid}}})"`
 	}
 	variables := map[string]interface{}{
 		"stguid":  graphql.String(stid),

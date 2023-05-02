@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"math"
+	"math/big"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +18,8 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/kiddikn/supertokens-with-hasura/domain"
+	"github.com/oklog/ulid/v2"
+	"github.com/supertokens/supertokens-golang/ingredients/emaildelivery"
 	"github.com/supertokens/supertokens-golang/recipe/dashboard"
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword/epmodels"
@@ -241,7 +247,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionContainer := session.GetSessionFromRequestContext(r.Context())
 		if sessionContainer == nil {
-			fmt.Println("no session container")
+			log.Println("no session container")
 			w.WriteHeader(500)
 			w.Write([]byte("no session found"))
 			return
@@ -286,6 +292,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		// ユーザーを作成
 		signUpResult, err := emailpassword.SignUp(param.Email, cfg.FakePassword)
 		if err != nil {
+			log.Println(err)
 			w.WriteHeader(500)
 			w.Write([]byte("failed to sign up. Please retry the inviting flow"))
 			return
@@ -295,6 +302,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		if signUpResult.EmailAlreadyExistsError != nil {
 			if _, err = d.GetUserByEmail(param.Email); err != nil {
 				if !errors.Is(err, domain.ErrNotFound) {
+					log.Println(err)
 					w.WriteHeader(500)
 					w.Write([]byte("failed to get hasura user"))
 					return
@@ -309,6 +317,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 			// STにはあるけど、hasura上にはないのでSTからguid取得する
 			res, err := emailpassword.GetUserByEmail(param.Email)
 			if err != nil {
+				log.Println(err)
 				w.WriteHeader(500)
 				w.Write([]byte("failed to get user by email"))
 			}
@@ -316,41 +325,51 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		} else {
 			stGuid = signUpResult.OK.User.ID
 		}
-		fmt.Println(stGuid)
-		fmt.Println(param.GroupID)
 
-		// TODO: hasura上にユーザー作成
-		// if err := d.CreateUser(id, name, email); err != nil {
-		// 	w.WriteHeader(500)
-		// 	w.Write([]byte("failed to create user on hasura, please contact system owner..."))
-		// 	return
-		// }
+		{
+			// hasura上にユーザー作成
+			ugGUID := GUIDGenerate(time.Now())
+			if err := d.CreateUser(stGuid, param.Name, param.Email, ugGUID, param.GroupID); err != nil {
+				log.Println(err)
+				w.WriteHeader(500)
+				w.Write([]byte("failed to create user on hasura, please contact system owner..."))
+				return
+			}
+		}
 
 		// パスワードリセット&メール送信
 		{
-			// passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
-			// if err != nil {
-			// 	w.WriteHeader(500)
-			// 	w.Write([]byte("failed to reset password token, just try reset password from login page"))
-			// 	return
-			// }
+			passwordResetToken, err := emailpassword.CreateResetPasswordToken(stGuid)
+			if err != nil {
+				log.Println(err)
+				w.WriteHeader(500)
+				w.Write([]byte("failed to reset password token, just try reset password from login page"))
+				return
+			}
 
-			// inviteLink := fmt.Sprintf("%s/auth/reset-password?token=%s", "", passwordResetToken.OK.Token)
-			// if err := emailpassword.SendEmail(emaildelivery.EmailType{
-			// 	PasswordReset: &emaildelivery.PasswordResetType{
-			// 		User: emaildelivery.User{
-			// 			ID:    signUpResult.OK.User.ID,
-			// 			Email: signUpResult.OK.User.Email,
-			// 		},
-			// 		PasswordResetLink: inviteLink,
-			// 	},
-			// }); err != nil {
-			// 	w.WriteHeader(500)
-			// 	w.Write([]byte("failed to send reset email, just try reset password from login page"))
-			// 	return
-			// }
+			inviteLink := fmt.Sprintf("%s/auth/reset-password?token=%s", cfg.WebSiteDomain, passwordResetToken.OK.Token)
+			if err := emailpassword.SendEmail(emaildelivery.EmailType{
+				PasswordReset: &emaildelivery.PasswordResetType{
+					User: emaildelivery.User{
+						ID:    stGuid,
+						Email: param.Email,
+					},
+					PasswordResetLink: inviteLink,
+				},
+			}); err != nil {
+				log.Println(err)
+				w.WriteHeader(500)
+				w.Write([]byte("failed to send reset email, just try reset password from login page"))
+				return
+			}
 		}
 
 		w.WriteHeader(200)
 	}
+}
+
+func GUIDGenerate(t time.Time) string {
+	s, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(s.Int64())), 0)
+	return ulid.MustNew(ulid.Timestamp(t), entropy).String()
 }

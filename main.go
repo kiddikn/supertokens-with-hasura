@@ -251,6 +251,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 			Name      string `json:"name"`
 			Email     string `json:"email"`
 			GroupGUID string `json:"groupGuid"`
+			GroupID   int    `json:"groupId"`
 		}
 
 		var param Param
@@ -316,6 +317,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 			stGuid = signUpResult.OK.User.ID
 		}
 		fmt.Println(stGuid)
+		fmt.Println(param.GroupID)
 
 		// TODO: hasura上にユーザー作成
 		// if err := d.CreateUser(id, name, email); err != nil {

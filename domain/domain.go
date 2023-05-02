@@ -27,16 +27,23 @@ func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
 	}
 }
 
-func (h *Hasura) CreateUser(id, name, email string) error {
+func (h *Hasura) CreateUser(stid, name, email, ugGuid string, groupID int) error {
+	// mutation InsertUserOne($stguid: String, $name: String, $email: String, $ugGuid: String, $groupID: Int) {
+	// 	insert_user_one(object: {guid: $stguid, name: $name, email: $email, user_groups: {data: {group_id: $groupID, guid: $ugGuid, user_guid: $stguid}}}) {
+	// 	  role
+	// 	}
+	// }
 	var m struct {
 		InsertUserOne struct {
-			Name graphql.String
-		} `graphql:"insert_user_one(object: {guid: $guid, name: $name, email: $email})"`
+			Role graphql.String
+		} `graphql:"insert_user_one(object: {guid: $stguid, name: $name, email: $email, user_groups: {data: {group_id: $groupID, guid: $ugGuid, user_guid: $stguid}}})"`
 	}
 	variables := map[string]interface{}{
-		"guid":  graphql.String(id),
-		"name":  graphql.String(name),
-		"email": graphql.String(email),
+		"stguid":  graphql.String(stid),
+		"name":    graphql.String(name),
+		"email":   graphql.String(email),
+		"ugGuid":  graphql.String(ugGuid),
+		"groupID": graphql.Int(groupID),
 	}
 
 	if err := h.client.Mutate(context.Background(), &m, variables); err != nil {

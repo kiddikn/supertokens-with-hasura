@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/hasura/go-graphql-client"
@@ -55,6 +56,40 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 	}
 
 	return int32(q.GetUser.Role), nil
+}
+
+func (h *Hasura) GetUserGroupRole(userGUID, groupGUID string) (int32, error) {
+	// query GetUserGroupRole($userGUID: String, $groupGUID: String) {
+	// 	user(where: {guid: {_eq: $userGUID}}) {
+	// 	  user_groups(where: {group: {guid: {_eq: $groupGUID}}}) {
+	// 		role
+	// 	  }
+	// 	}
+	// }
+	var query struct {
+		User []struct {
+			UserGroups []struct {
+				Role graphql.Int
+			} `graphql:"user_groups(where: {group: {guid: {_eq: $groupGUID}}})"`
+		} `graphql:"user(where: {guid: {_eq: $userGUID}})"`
+	}
+	variables := map[string]interface{}{
+		"userGUID":  graphql.String(userGUID),
+		"groupGUID": graphql.String(groupGUID),
+	}
+
+	if err := h.client.Query(context.Background(), &query, variables); err != nil {
+		return 0, err
+	}
+
+	if len(query.User) != 1 {
+		return 0, fmt.Errorf("user is not found")
+	}
+
+	if len(query.User[0].UserGroups) != 1 {
+		return 0, fmt.Errorf("user group is not found")
+	}
+	return int32(query.User[0].UserGroups[0].Role), nil
 }
 
 const (

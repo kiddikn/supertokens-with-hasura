@@ -164,7 +164,7 @@ func httpServer(httpPort int, webSiteDomain, hasuraEndPoint string, domain *doma
 					sessionRequired := true
 					session.VerifySession(&sessmodels.VerifySessionOptions{
 						SessionRequired: &sessionRequired, // NOTE:指定したグループに対してowner権限を持っているか見ないといけないのでログイン済みかどうかだけここでチェック
-					}, createUserAPI).ServeHTTP(rw, r)
+					}, createUserAPI(domain)).ServeHTTP(rw, r)
 					return
 				}
 			})),
@@ -237,107 +237,121 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 	}
 }
 
-func createUserAPI(w http.ResponseWriter, r *http.Request) {
-	sessionContainer := session.GetSessionFromRequestContext(r.Context())
-	if sessionContainer == nil {
-		fmt.Println("no session container")
-		w.WriteHeader(500)
-		w.Write([]byte("no session found"))
-		return
+func createUserAPI(d *domain.Hasura) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sessionContainer := session.GetSessionFromRequestContext(r.Context())
+		if sessionContainer == nil {
+			fmt.Println("no session container")
+			w.WriteHeader(500)
+			w.Write([]byte("no session found"))
+			return
+		}
+
+		type Param struct {
+			Name      string `json:"name"`
+			Email     string `json:"email"`
+			GroupGUID string `json:"groupGuid"`
+		}
+
+		var param Param
+		if err := json.NewDecoder(r.Body).Decode(&param); err != nil {
+			log.Println(err)
+			w.WriteHeader(400)
+			w.Write([]byte("request decode failed"))
+		}
+
+		if param.Email == "" || param.Name == "" || param.GroupGUID == "" {
+			w.WriteHeader(400)
+			w.Write([]byte("request param is invalid"))
+		}
+
+		{
+			// requestされたユーザーが対象グループのオーナーかチェックする
+			reqUserID := sessionContainer.GetUserID()
+			roleNum, err := d.GetUserGroupRole(reqUserID, param.GroupGUID)
+			if err != nil {
+				log.Println(err)
+				w.WriteHeader(403)
+				w.Write([]byte("user is not allowed to create"))
+				return
+			}
+			role := domain.GetHasuraRole(roleNum)
+			if role != "owner" && role != "super" {
+				w.WriteHeader(403)
+				w.Write([]byte("user should be owner or super"))
+			}
+		}
+
+		// TODO" ユーザーを作成する
+		// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
+		// // if err != nil {
+		// // 	// TODO: send 500 to the client
+		// // 	return
+		// // }
+
+		// // if signUpResult.EmailAlreadyExistsError != nil {
+		// // 	// TODO: send 400 to the client
+		// // 	return
+		// // }
+
+		// TODO: リセットパスワードのトークンを作成
+		// // // we successfully created the user. Now we should send them their invite link
+		// // passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
+		// // if err != nil {
+		// // 	// TODO: send 500 to the client
+		// // 	return
+		// // }
+
+		// TODO: hasura上にユーザー作成
+		// 		if err := d.CreateUser(id, name, email); err != nil {
+		// 			return epmodels.SignUpPOSTResponse{}, err
+		// 		}
+
+		// TODO: メール送信
+		// // inviteLink := "http://localhost:3000/auth/reset-password?token=" + passwordResetToken.OK.Token
+		// // err = emailpassword.SendEmail(emaildelivery.EmailType{
+		// // 	PasswordReset: &emaildelivery.PasswordResetType{
+		// // 		User: emaildelivery.User{
+		// // 			ID:    signUpResult.OK.User.ID,
+		// // 			Email: signUpResult.OK.User.Email,
+		// // 		},
+		// // 		PasswordResetLink: inviteLink,
+		// // 	},
+		// // })
+		// // if err != nil {
+		// // 	// TODO: send 500 to the client
+		// // 	return
+		// // }
+		// // // TODO: send 200 to the client
+
+		// ↓元々signUpで呼ばれていた
+		// // First we copy the original implementation
+		// originalSignUpPOST := *originalImplementation.SignUpPOST
+
+		// *originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
+		// 	resp, err := originalSignUpPOST(formFields, options, userContext)
+		// 	if err != nil {
+		// 		return epmodels.SignUpPOSTResponse{}, err
+		// 	}
+
+		// 	if resp.OK != nil {
+		// 		// sign up was successful
+		// 		id := resp.OK.User.ID
+		// 		email := resp.OK.User.Email
+		// 		var name string
+		// 		for _, ff := range formFields {
+		// 			if ff.ID == "name" {
+		// 				name = ff.Value
+		// 				break
+		// 			}
+		// 		}
+
+		// 		if err := d.CreateUser(id, name, email); err != nil {
+		// 			return epmodels.SignUpPOSTResponse{}, err
+		// 		}
+		// 	}
+
+		// 	return resp, err
+		// }
 	}
-
-	type Param struct {
-		Name      string `json:"name"`
-		Email     string `json:"email"`
-		GroupGUID string `json:"groupGuid"`
-	}
-
-	var param Param
-	if err := json.NewDecoder(r.Body).Decode(&param); err != nil {
-		log.Fatal(err)
-		w.WriteHeader(400)
-		w.Write([]byte("request decode failed"))
-	}
-
-	if param.Email == "" || param.Name == "" || param.GroupGUID == "" {
-		w.WriteHeader(400)
-		w.Write([]byte("request param is invalid"))
-	}
-
-	reqUserID := sessionContainer.GetUserID()
-	fmt.Println(reqUserID)
-
-	// TODO: requestされたユーザーが対象グループのオーナーかチェックする
-
-	// TODO" ユーザーを作成する
-	// // signUpResult, err := emailpassword.SignUp(email, cfg.FakePassword)
-	// // if err != nil {
-	// // 	// TODO: send 500 to the client
-	// // 	return
-	// // }
-
-	// // if signUpResult.EmailAlreadyExistsError != nil {
-	// // 	// TODO: send 400 to the client
-	// // 	return
-	// // }
-
-	// TODO: リセットパスワードのトークンを作成
-	// // // we successfully created the user. Now we should send them their invite link
-	// // passwordResetToken, err := emailpassword.CreateResetPasswordToken(signUpResult.OK.User.ID)
-	// // if err != nil {
-	// // 	// TODO: send 500 to the client
-	// // 	return
-	// // }
-
-	// TODO: hasura上にユーザー作成
-	// 		if err := d.CreateUser(id, name, email); err != nil {
-	// 			return epmodels.SignUpPOSTResponse{}, err
-	// 		}
-
-	// TODO: メール送信
-	// // inviteLink := "http://localhost:3000/auth/reset-password?token=" + passwordResetToken.OK.Token
-	// // err = emailpassword.SendEmail(emaildelivery.EmailType{
-	// // 	PasswordReset: &emaildelivery.PasswordResetType{
-	// // 		User: emaildelivery.User{
-	// // 			ID:    signUpResult.OK.User.ID,
-	// // 			Email: signUpResult.OK.User.Email,
-	// // 		},
-	// // 		PasswordResetLink: inviteLink,
-	// // 	},
-	// // })
-	// // if err != nil {
-	// // 	// TODO: send 500 to the client
-	// // 	return
-	// // }
-	// // // TODO: send 200 to the client
-
-	// ↓元々signUpで呼ばれていた
-	// // First we copy the original implementation
-	// originalSignUpPOST := *originalImplementation.SignUpPOST
-
-	// *originalImplementation.SignUpPOST = func(formFields []epmodels.TypeFormField, options epmodels.APIOptions, userContext supertokens.UserContext) (epmodels.SignUpPOSTResponse, error) {
-	// 	resp, err := originalSignUpPOST(formFields, options, userContext)
-	// 	if err != nil {
-	// 		return epmodels.SignUpPOSTResponse{}, err
-	// 	}
-
-	// 	if resp.OK != nil {
-	// 		// sign up was successful
-	// 		id := resp.OK.User.ID
-	// 		email := resp.OK.User.Email
-	// 		var name string
-	// 		for _, ff := range formFields {
-	// 			if ff.ID == "name" {
-	// 				name = ff.Value
-	// 				break
-	// 			}
-	// 		}
-
-	// 		if err := d.CreateUser(id, name, email); err != nil {
-	// 			return epmodels.SignUpPOSTResponse{}, err
-	// 		}
-	// 	}
-
-	// 	return resp, err
-	// }
 }

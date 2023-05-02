@@ -27,7 +27,7 @@ func NewClient(hasuraAdminSecret, hasuraEndPoint string) *Hasura {
 	}
 }
 
-func (h *Hasura) CreateUser(stid, name, email, ugGuid string, groupID int) error {
+func (h *Hasura) CreateUser(ctx context.Context, stid, name, email, ugGuid string, groupID int) error {
 	// mutation InsertUserOne($stguid: String, $name: String, $email: String, $ugGuid: String, $groupID: Int) {
 	// 	insert_user_one(object: {guid: $stguid, name: $name, email: $email, user_groups: {data: {group_id: $groupID, guid: $ugGuid, user_guid: $stguid}}}) {
 	// 	  role
@@ -46,13 +46,13 @@ func (h *Hasura) CreateUser(stid, name, email, ugGuid string, groupID int) error
 		"groupID": graphql.Int(groupID),
 	}
 
-	if err := h.client.Mutate(context.Background(), &m, variables); err != nil {
+	if err := h.client.Mutate(ctx, &m, variables); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (h *Hasura) GetUser(guid string) (int32, error) {
+func (h *Hasura) GetUser(ctx context.Context, guid string) (int32, error) {
 	var q struct {
 		GetUser struct {
 			Role graphql.Int
@@ -62,14 +62,14 @@ func (h *Hasura) GetUser(guid string) (int32, error) {
 		"guid": graphql.String(guid),
 	}
 
-	if err := h.client.Query(context.Background(), &q, variables); err != nil {
+	if err := h.client.Query(ctx, &q, variables); err != nil {
 		return 0, err
 	}
 
 	return int32(q.GetUser.Role), nil
 }
 
-func (h *Hasura) GetUserByEmail(email string) (string, error) {
+func (h *Hasura) GetUserByEmail(ctx context.Context, email string) (string, error) {
 	var q struct {
 		User []struct {
 			Guid graphql.String
@@ -79,7 +79,7 @@ func (h *Hasura) GetUserByEmail(email string) (string, error) {
 		"email": graphql.String(email),
 	}
 
-	if err := h.client.Query(context.Background(), &q, variables); err != nil {
+	if err := h.client.Query(ctx, &q, variables); err != nil {
 		return "", err
 	}
 
@@ -94,7 +94,7 @@ func (h *Hasura) GetUserByEmail(email string) (string, error) {
 	return string(q.User[0].Guid), nil
 }
 
-func (h *Hasura) GetUserGroupRole(userGUID, groupGUID string) (int32, error) {
+func (h *Hasura) GetUserGroupRole(ctx context.Context, userGUID, groupGUID string) (int32, error) {
 	// query GetUserGroupRole($userGUID: String, $groupGUID: String) {
 	// 	user(where: {guid: {_eq: $userGUID}}) {
 	// 	  user_groups(where: {group: {guid: {_eq: $groupGUID}}}) {
@@ -114,7 +114,7 @@ func (h *Hasura) GetUserGroupRole(userGUID, groupGUID string) (int32, error) {
 		"groupGUID": graphql.String(groupGUID),
 	}
 
-	if err := h.client.Query(context.Background(), &query, variables); err != nil {
+	if err := h.client.Query(ctx, &query, variables); err != nil {
 		return 0, err
 	}
 

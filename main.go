@@ -210,7 +210,8 @@ func corsMiddleware(next http.Handler, webSiteDomain, hasuraEndPoint string) htt
 
 func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sessionContainer := session.GetSessionFromRequestContext(r.Context())
+		ctx := r.Context()
+		sessionContainer := session.GetSessionFromRequestContext(ctx)
 		if sessionContainer == nil {
 			fmt.Println("no session container")
 			w.WriteHeader(500)
@@ -222,7 +223,7 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 		w.Header().Add("content-type", "application/json")
 
 		userID := sessionContainer.GetUserID()
-		ur, err := d.GetUser(userID)
+		ur, err := d.GetUser(ctx, userID)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -245,7 +246,8 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 
 func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sessionContainer := session.GetSessionFromRequestContext(r.Context())
+		ctx := r.Context()
+		sessionContainer := session.GetSessionFromRequestContext(ctx)
 		if sessionContainer == nil {
 			log.Println("no session container")
 			w.WriteHeader(500)
@@ -275,7 +277,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		{
 			// requestされたユーザーが対象グループのオーナーかチェックする
 			reqUserID := sessionContainer.GetUserID()
-			roleNum, err := d.GetUserGroupRole(reqUserID, param.GroupGUID)
+			roleNum, err := d.GetUserGroupRole(ctx, reqUserID, param.GroupGUID)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(403)
@@ -300,7 +302,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 
 		var stGuid string
 		if signUpResult.EmailAlreadyExistsError != nil {
-			if _, err = d.GetUserByEmail(param.Email); err != nil {
+			if _, err = d.GetUserByEmail(ctx, param.Email); err != nil {
 				if !errors.Is(err, domain.ErrNotFound) {
 					log.Println(err)
 					w.WriteHeader(500)
@@ -329,7 +331,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		{
 			// hasura上にユーザー作成
 			ugGUID := GUIDGenerate(time.Now())
-			if err := d.CreateUser(stGuid, param.Name, param.Email, ugGUID, param.GroupID); err != nil {
+			if err := d.CreateUser(ctx, stGuid, param.Name, param.Email, ugGUID, param.GroupID); err != nil {
 				log.Println(err)
 				w.WriteHeader(500)
 				w.Write([]byte("failed to create user on hasura, please contact system owner..."))

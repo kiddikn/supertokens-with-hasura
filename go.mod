@@ -5,7 +5,7 @@ go 1.19
 
 require (
 	github.com/caarlos0/env/v6 v6.7.1
-	github.com/hasura/go-graphql-client v0.6.3
+	github.com/hasura/go-graphql-client v0.9.3
 	github.com/supertokens/supertokens-golang v0.10.8
 )
 
@@ -22,9 +22,9 @@ require (
 	github.com/nyaruka/phonenumbers v1.0.73 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/twilio/twilio-go v0.26.0 // indirect
-	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df // indirect

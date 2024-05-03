@@ -60,15 +60,19 @@ func run() error {
 	samesite := "none"
 	cookieSecure := true
 	cookieDomain := cfg.CookieDomain
+	apiBasePath := "/auth"
+	websiteBasePath := "/auth"
 	if err := supertokens.Init(supertokens.TypeInput{
 		Supertokens: &supertokens.ConnectionInfo{
 			ConnectionURI: cfg.SuperTokensURL,
 			APIKey:        cfg.SuperTokensApiKey,
 		},
 		AppInfo: supertokens.AppInfo{
-			AppName:       cfg.AppName,
-			APIDomain:     cfg.ApiDomain,
-			WebsiteDomain: cfg.WebSiteDomain,
+			AppName:         cfg.AppName,
+			APIDomain:       cfg.ApiDomain,
+			WebsiteDomain:   cfg.WebSiteDomain,
+			APIBasePath:     &apiBasePath,
+			WebsiteBasePath: &websiteBasePath,
 		},
 		RecipeList: []supertokens.Recipe{
 			emailpassword.Init(
@@ -90,29 +94,31 @@ func run() error {
 							ogSignIn := *originalImplementation.SignIn
 							ogUpdateEmailOrPassword := *originalImplementation.UpdateEmailOrPassword
 
-							(*originalImplementation.UpdateEmailOrPassword) = func(userId string, email, password *string, userContext supertokens.UserContext) (epmodels.UpdateEmailOrPasswordResponse, error) {
+							(*originalImplementation.UpdateEmailOrPassword) = func(userId string, email, password *string, applyPasswordPolicy *bool, tenantId string, userContext supertokens.UserContext) (epmodels.UpdateEmailOrPasswordResponse, error) {
 								if password != nil && *password == cfg.FakePassword {
 									return epmodels.UpdateEmailOrPasswordResponse{}, errors.New("use a different password")
 								}
-								return ogUpdateEmailOrPassword(userId, email, password, userContext)
+								return ogUpdateEmailOrPassword(userId, email, password, applyPasswordPolicy, tenantId, userContext)
 							}
 
-							(*originalImplementation.ResetPasswordUsingToken) = func(token, newPassword string, userContext supertokens.UserContext) (epmodels.ResetPasswordUsingTokenResponse, error) {
+							(*originalImplementation.ResetPasswordUsingToken) = func(token, newPassword, tenantId string, userContext supertokens.UserContext) (epmodels.ResetPasswordUsingTokenResponse, error) {
 								if newPassword == cfg.FakePassword {
 									return epmodels.ResetPasswordUsingTokenResponse{
 										ResetPasswordInvalidTokenError: &struct{}{},
 									}, nil
 								}
-								return ogResetPasswordUsingToken(token, newPassword, userContext)
+								return ogResetPasswordUsingToken(token, newPassword, tenantId, userContext)
 							}
 
-							(*originalImplementation.SignIn) = func(email, password string, userContext supertokens.UserContext) (epmodels.SignInResponse, error) {
+							(*originalImplementation.SignIn) = func(email, password, tenantId string, userContext supertokens.UserContext) (epmodels.SignInResponse, error) {
 								if password == cfg.FakePassword {
 									return epmodels.SignInResponse{
 										WrongCredentialsError: &struct{}{},
 									}, nil
 								}
-								return ogSignIn(email, password, userContext)
+								aaa, err := ogSignIn(email, password, tenantId, userContext)
+								fmt.Println(aaa, err)
+								return aaa, err
 							}
 
 							return originalImplementation
@@ -292,7 +298,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 		}
 
 		// ユーザーを作成
-		signUpResult, err := emailpassword.SignUp(param.Email, cfg.FakePassword)
+		signUpResult, err := emailpassword.SignUp("", param.Email, cfg.FakePassword)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(500)
@@ -317,7 +323,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 			}
 
 			// STにはあるけど、hasura上にはないのでSTからguid取得する
-			res, err := emailpassword.GetUserByEmail(param.Email)
+			res, err := emailpassword.GetUserByEmail("", param.Email)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(500)
@@ -341,7 +347,7 @@ func createUserAPI(d *domain.Hasura) http.HandlerFunc {
 
 		// パスワードリセット&メール送信
 		{
-			passwordResetToken, err := emailpassword.CreateResetPasswordToken(stGuid)
+			passwordResetToken, err := emailpassword.CreateResetPasswordToken("", stGuid)
 			if err != nil {
 				log.Println(err)
 				w.WriteHeader(500)

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v11"
 	"github.com/kiddikn/supertokens-with-hasura/domain"
 	"github.com/oklog/ulid/v2"
 	"github.com/supertokens/supertokens-golang/ingredients/emaildelivery"

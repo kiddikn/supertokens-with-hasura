@@ -117,7 +117,6 @@ func run() error {
 									}, nil
 								}
 								aaa, err := ogSignIn(email, password, tenantId, userContext)
-								fmt.Println(aaa, err)
 								return aaa, err
 							}
 
@@ -231,7 +230,6 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 		userID := sessionContainer.GetUserID()
 		ur, err := d.GetUser(ctx, userID)
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 

@@ -19,3 +19,7 @@ bin/
 vendor/
 
 .envrc
+
+# Claude Code per-user settings
+.claude/settings.local.json
+

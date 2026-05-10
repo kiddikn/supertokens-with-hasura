@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Tidy modules: `go mod tidy`
 - Run locally (after `direnv allow` to load `.envrc`): `go run .`
 
-CI lives in `.github/workflows/go.yml` and only runs `go build` + `go test` on Go 1.22.
+CI lives in `.github/workflows/go.yml` and only runs `go build` + `go test` on Go 1.24.
 
 ## Architecture
 

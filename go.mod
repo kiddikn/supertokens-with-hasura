@@ -1,12 +1,12 @@
 module github.com/kiddikn/supertokens-with-hasura
 
-go 1.22
+go 1.24
 
 require (
 	github.com/caarlos0/env/v11 v11.0.0
 	github.com/hasura/go-graphql-client v0.12.1
 	github.com/oklog/ulid/v2 v2.1.0
-	github.com/supertokens/supertokens-golang v0.18.0
+	github.com/supertokens/supertokens-golang v0.25.2
 )
 
 require (

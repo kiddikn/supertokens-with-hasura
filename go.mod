@@ -1,6 +1,6 @@
 module github.com/kiddikn/supertokens-with-hasura
 
-go 1.24
+go 1.27
 
 require (
 	github.com/caarlos0/env/v11 v11.0.0

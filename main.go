@@ -224,12 +224,12 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(200)
-		w.Header().Add("content-type", "application/json")
-
 		userID := sessionContainer.GetUserID()
 		ur, err := d.GetUser(ctx, userID)
 		if err != nil {
+			fmt.Printf("failed to get hasura user %s: %v\n", userID, err)
+			w.WriteHeader(500)
+			w.Write([]byte("failed to get user"))
 			return
 		}
 
@@ -238,13 +238,16 @@ func sessioninfo(d *domain.Hasura) http.HandlerFunc {
 			"X-Hasura-Role":     domain.GetHasuraRole(ur),
 			"X-Hasura-Is-Owner": "false",
 		})
-
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte("error in converting to json"))
-		} else {
-			w.Write(bytes)
+			return
 		}
+
+		// ヘッダーは WriteHeader より前に設定しないと送信されない
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(bytes)
 	}
 }
 
